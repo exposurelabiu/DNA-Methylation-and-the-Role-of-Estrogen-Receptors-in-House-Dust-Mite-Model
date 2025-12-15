@@ -1,0 +1,16 @@
+Experiment,Treatment,Treatment Count,Control,Control Count
+HDM-v-PBS,HDM,26,PBS,28
+ESR1-v-WT,ESR1,15,WT,18
+ESR2-v-WT,ESR2,21,WT,18
+ESR1_Male-v-ESR2_Male,ESR1_Male,7,ESR2_Male,9
+ESR1_Female-v-ESR2_Female,ESR1_Female,8,ESR2_Female,12
+ESR1_Male-v-ESR1_Female,ESR1_Male,7,ESR1_Female,8
+ESR2_Male-v-ESR2_Female,ESR2_Male,9,ESR2_Female,12
+HDM_ESR1_Male-v-HDM_ESR2_Male,HDM_ESR1_Male,2,HDM_ESR2_Male,4
+HDM_ESR1_Female-v-HDM_ESR2_Female,HDM_ESR1_Female,4,HDM_ESR2_Female,6
+HDM_ESR1_Male-v-HDM_ESR1_Female,HDM_ESR1_Male,2,HDM_ESR1_Female,4
+HDM_ESR2_Male-v-HDM_ESR2_Female,HDM_ESR2_Male,4,HDM_ESR2_Female,6
+HDM_ESR1_Male-v-HDM_WT_Male,HDM_ESR1_Male,2,HDM_WT_Male,4
+HDM_ESR1_Female-v-HDM_WT_Female,HDM_ESR1_Female,4,HDM_WT_Female,6
+HDM_ESR2_Male-v-HDM_WT_Male,HDM_ESR2_Male,4,HDM_WT_Male,4
+HDM_ESR2_Female-v-HDM_WT_Female,HDM_ESR2_Female,6,HDM_WT_Female,6
