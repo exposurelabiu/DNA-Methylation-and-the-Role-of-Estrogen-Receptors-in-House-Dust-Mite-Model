@@ -1,0 +1,212 @@
+# Analysis Methods
+
+Begin by using cutadapt to clean all reads.
+
+``` bash
+for sample in 2012 2015 2131 2134 2136 2137 2163 2167 2192 2195 2198 2205 2207 \
+  2224 2242 2243 2244 2245 2249 2254 2257 2259 2295 2296 2297 2298 2299 \
+  2306 2308 2311 2312 2317 2320 2332 2383 2387 2388 2389 2435 2437 2439 2511 \
+  2525 2531 2609 2614 2685 2755 2761 3126 3230 3236 3237 3269 \
+  control_0 control_100
+do
+  cutadapt \
+    -j 0 \
+    -a AGATCGGAAGAGC \
+    -A AGATCGGAAGAGC \
+    -m 20 \
+    -q 20 \
+    -o cutadapt-reads/${sample}-clean-1.fq.gz \
+    -p cutadapt-reads/${sample}-clean-2.fq.gz \
+    reads/${sample}-1.fq.gz \
+    reads/${sample}-2.fq.gz \
+  > cutadapt-reads/${sample}.log
+done
+```
+
+Then use a custom script to remove reads that aren't proper RRBS libraries.
+
+``` bash
+for sample in 2012 2015 2131 2134 2136 2137 2163 2167 2192 2195 2198 2205 2207 \
+  2224 2242 2243 2244 2245 2249 2254 2257 2259 2295 2296 2297 2298 2299 \
+  2306 2308 2311 2312 2317 2320 2332 2383 2387 2388 2389 2435 2437 2439 2511 \
+  2525 2531 2609 2614 2685 2755 2761 3126 3230 3236 3237 3269 \
+  control_0 control_100
+do
+  python filter-reads.py $sample
+done
+
+```
+
+Align reads using BSseeker2
+
+``` bash
+
+for sample in \
+  2012 2015 2131 2134 2136 2137 2163 2167 2192 2195 \
+  2198 2205 2207 2224 2242 2243 2244 2245 2249 2254 \
+  2257 2259 2295 2296 2297 2298 2299 2306 2308 2311 \
+  2312 2317 2320 2332 2383 2387 2388 2389 2435 2437 \
+  2439 2511 2525 2531 2609 2614 2685 2755 2761 3126 \
+  3230 3236 3237 3269 control_0 control_100
+do
+  bs_seeker2-align.py \
+    --input_1=../cutadapt-reads/${sample}-filtered-1.fq.gz \
+    --input_2=../cutadapt-reads/${sample}-filtered-2.fq.gz \
+    --rrbs \
+    --tag=Y \
+    --cut-site=C-CGG \
+    --genome=Mus_musculus_GRCm39/Mus_musculus.GRCm39.dna.primary_assembly.fa \
+    --aligner=bowtie2 \
+    --output=${sample}.bam \
+    --db=Mus_musculus_GRCm39/RRBS_MSP1 \
+    --output-format=bam \
+    --bt2-p 20 \
+    > ${sample}-align.log \
+    2> ${sample}-align.err
+  samtools sort ${sample}.bam > ${sample}-sorted.bam
+  samtools index ${sample}-sorted.bam
+done
+
+```
+
+Use custom script to remove small scaffolds
+
+``` bash
+for sample in \
+  2012 2015 2131 2134 2136 2137 2163 2167 2192 2195 \
+  2198 2205 2207 2224 2242 2243 2244 2245 2249 2254 \
+  2257 2259 2295 2296 2297 2298 2299 2306 2308 2311 \
+  2312 2317 2320 2332 2383 2387 2388 2389 2435 2437 \
+  2439 2511 2525 2531 2609 2614 2685 2755 2761 3126 \
+  3230 3236 3237 3269 control_0 control_100
+do
+  python filter-mapping.py \
+    --bam ../bs-seeker2/${sample}-sorted.bam | samtools sort - > ${sample}-sorted.bam
+  samtools index ${sample}-sorted.bam
+done
+```
+
+Build an RRBS index to query against
+
+``` bash
+bs_seeker2-build.py \
+  -f Mus_musculus_GRCm39/Mus_musculus.GRCm39.dna.primary_assembly.fa \
+  -r -l 20 -u 500
+
+```
+
+Next use BSseeker2 to call methylation.
+
+``` bash
+for sample in \
+  2012 2015 2131 2134 2136 2137 2163 2167 2192 2195 \
+  2198 2205 2207 2224 2242 2243 2244 2245 2249 2254 \
+  2257 2259 2295 2296 2297 2298 2299 2306 2308 2311 \
+  2312 2317 2320 2332 2383 2387 2388 2389 2435 2437 \
+  2439 2511 2525 2531 2609 2614 2685 2755 2761 3126 \
+  3230 3236 3237 3269 control_0 control_100
+do
+  bs_seeker2-call_methylation.py -i ${sample}-sorted.bam \
+    --sorted \
+    --db=Mus_musculus_GRCm39/RRBS_MSP1/Mus_musculus.GRCm39.dna.primary_assembly.fa_rrbs_20_500_bowtie2 \
+    --output-prefix=${sample}-methylation
+done
+
+```
+
+# Filter methylation sites that aren't CG sites.
+
+Filter non-CG sites from the CGmap and wig files.
+
+``` bash
+for sample in \
+  2012 2015 2131 2134 2136 2137 2163 2167 2192 2195 \
+  2198 2205 2207 2224 2242 2243 2244 2245 2249 2254 \
+  2257 2259 2295 2296 2297 2298 2299 2306 2308 2311 \
+  2312 2317 2320 2332 2383 2387 2388 2389 2435 2437 \
+  2439 2511 2525 2531 2609 2614 2685 2755 2761 3126 \
+  3230 3236 3237 3269 control_0 control_100
+do
+  python select-cg-sites.py \
+    --cg-map ${sample}-methylation.CGmap.gz \
+    --wig ${sample}-methylation.wig.gz \
+    --sample ${sample}
+done
+
+```
+
+# Create a unified list of CG sites to use in differential methylation analysis
+
+Process the filtered methlyation.CGmap file and create a single file
+with the sequencing depth for all samples at all sites.
+
+``` bash
+python combine-cg-files.py \
+  2012 2015 2131 2134 2136 2137 2163 2167 2192 2195 \
+  2198 2205 2207 2224 2242 2243 2244 2245 2249 2254 \
+  2257 2259 2295 2296 2297 2298 2299 2306 2308 2311 \
+  2312 2317 2320 2332 2383 2387 2388 2389 2435 2437 \
+  2439 2511 2525 2531 2609 2614 2685 2755 2761 3126 \
+  3230 3236 3237 3269 control_0 control_100 > combined-cg-coverage.tsv
+```
+
+Filter the combined file to remove sites where the mean depth is less
+than 20 or above 90.
+
+``` bash
+python mean-coverage-histogram.py --cg-file combined-cg-coverage.tsv \
+  --output CG-mean-coverage-histogram.pdf > filtered-cg-sites.tsv
+
+```
+
+# Make input for Methylkit
+
+Using results from previous steps, create a methylkit-copmatible file for each sample.
+
+``` bash
+for sample in \
+  2012 2015 2131 2134 2136 2137 2163 2167 2192 2195 \
+  2198 2205 2207 2224 2242 2243 2244 2245 2249 2254 \
+  2257 2259 2295 2296 2297 2298 2299 2306 2308 2311 \
+  2312 2317 2320 2332 2383 2387 2388 2389 2435 2437 \
+  2439 2511 2525 2531 2609 2614 2685 2755 2761 3126 \
+  3230 3236 3237 3269 control_0 control_100
+do
+  python make-methylkit-input.py \
+    --cg-map ${sample}-cg-methylation.CGmap.gz \
+    --master filtered-cg-sites.tsv > ${sample}-mk-input.tsv
+done
+
+```
+
+# Methylkit
+
+Example comparison of HDM and PBS using methylkit
+
+``` bash
+python make-methylkit-meta.py \
+  --meta meta.tsv --field treatment --control PBS --experiment HDM > HDM-v-PBS-meta.tsv
+
+for exp in HDM-v-PBS
+do
+  Rscript methylkit.R \
+    --meta ${exp}-meta.tsv \
+    --base $exp
+  Rscript methylkit.R \
+    --windowed \
+    --meta ${exp}-meta.tsv \
+    --base $exp
+  Rscript methylkit.R \
+    --covariates \
+    --meta ${exp}-meta.tsv \
+    --base $exp
+  Rscript methylkit.R \
+    --covariates \
+    --windowed \
+    --meta ${exp}-meta.tsv \
+    --base $exp
+done
+```
+
+
+
